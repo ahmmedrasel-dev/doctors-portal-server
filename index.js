@@ -50,6 +50,19 @@ async function run() {
     const servicesCollection = client.db('doctors_portal').collection("services");
     const bookignCollection = client.db('doctors_portal').collection('bookings');
     const usersCollection = client.db('doctors_portal').collection('users');
+    const doctorsCollection = client.db('doctors_portal').collection('doctors')
+
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decode.email;
+      const requesterAccount = await usersCollection.findOne({ email: requester });
+
+      if (requesterAccount.role === 'admin') {
+        next()
+      }
+      else {
+        res.status(403).send({ message: 'Forbidden Access!' })
+      }
+    }
 
     app.get('/services', async (req, res) => {
       const query = {};
@@ -65,23 +78,36 @@ async function run() {
       res.send({ admin: isAdmin })
     })
 
+    // Post Doctor to Databse.
+    app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
+      const doctor = req.body;
+      const result = doctorsCollection.insertOne(doctor);
+      res.send({ success: true, message: 'Doctor Inserted!' })
+    })
+
+    // Get all Doctor,
+    app.get('/doctors', verifyJWT, verifyAdmin, async (req, res) => {
+      const doctors = await doctorsCollection.find().toArray();
+      res.send(doctors)
+    })
+
+    // Delete Doctor,
+    app.delete('/doctor/:email', verifyJWT, verifyAdmin, async (req, res) => {
+      const email = req.params.email
+      const filter = { email: email }
+      const doctors = await doctorsCollection.deleteOne(filter);
+      res.send(doctors)
+    })
 
     // Inster or Update User to Database.
-    app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+    app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
-      const requester = req.decode.email;
-      const requesterAccount = await usersCollection.findOne({ email: requester });
-      if (requesterAccount.role === 'admin') {
-        const filter = { email: email };
-        const updateUser = {
-          $set: { role: 'admin' }
-        }
-        const result = await usersCollection.updateOne(filter, updateUser);
-        res.send(result);
+      const filter = { email: email };
+      const updateUser = {
+        $set: { role: 'admin' }
       }
-      else {
-        res.status(403).send({ message: 'Forbidden Access!' })
-      }
+      const result = await usersCollection.updateOne(filter, updateUser);
+      res.send(result);
     })
 
     // Inster or Update User to Database.

@@ -5,6 +5,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const { response } = require('express');
 
 
 // Middleware.
@@ -14,6 +15,34 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.nstmr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+//Varify Jwt
+function verifyJWT(req, res, next) {
+  // Client Sit the reviece korbo.
+  const authHeader = req.headers.authorization;
+  // Url dia api hit korle token na thakle data paoya jabe na.
+  // console.log(authHeader)
+  if (!authHeader) {
+    return res.status(401).send({ message: 'Unauthorization access' })
+  }
+  // Client thek poya token ke splite dia ber kore neoya.
+  const token = authHeader.split(' ')[1];
+  // console.log(process.env.ACCESS_TOKEN_SECRET);
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decode) {
+    // Client site er token ta valid kina check kora.
+    if (err) {
+      console.log(err)
+      return res.status(403).send({ message: 'Forbidden Access!' })
+    }
+    // Valid hole req thek token ke decode kore chek korbe.
+    req.decode = decode;
+    // Sob thik thake next() dia baki kaj gulo korbe.
+    next()
+  });
+
+  // console.log(authHeader)
+}
 
 async function run() {
   try {
@@ -29,6 +58,32 @@ async function run() {
       res.send(services)
     })
 
+    app.get('/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email: email });
+      const isAdmin = user.role === 'admin';
+      res.send({ admin: isAdmin })
+    })
+
+
+    // Inster or Update User to Database.
+    app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const requester = req.decode.email;
+      const requesterAccount = await usersCollection.findOne({ email: requester });
+      if (requesterAccount.role === 'admin') {
+        const filter = { email: email };
+        const updateUser = {
+          $set: { role: 'admin' }
+        }
+        const result = await usersCollection.updateOne(filter, updateUser);
+        res.send(result);
+      }
+      else {
+        res.status(403).send({ message: 'Forbidden Access!' })
+      }
+    })
+
     // Inster or Update User to Database.
     app.put('/user/:email', async (req, res) => {
       const email = req.params.email;
@@ -40,14 +95,27 @@ async function run() {
       }
       const result = await usersCollection.updateOne(filter, updateUser, options);
       const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
-      res.send({ result, accessToken: token });
+      res.send({ result, token });
     })
-    // Get Booking 
-    app.get('/booking', async (req, res) => {
+
+    // Get All Users Data
+    app.get('/users', verifyJWT, async (req, res) => {
+      const query = {};
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    })
+
+    // Get My Appoinment Booking 
+    app.get('/booking', verifyJWT, async (req, res) => {
       const patient = req.query.patient;
-      const query = { patiendEmail: patient };
-      const bookings = await bookignCollection.find(query).toArray();
-      res.send(bookings);
+      const decodeEmail = req.decode.email
+      if (patient === decodeEmail) {
+        const query = { patiendEmail: patient };
+        const bookings = await bookignCollection.find(query).toArray();
+        res.send(bookings);
+      } else {
+        return res.status(403).send({ message: 'Forbidden Access!' })
+      }
     })
 
     // this is not the proper way to query.
@@ -83,7 +151,7 @@ async function run() {
         return res.send({ success: false, message: 'Booking Already Exist.' })
       }
       await bookignCollection.insertOne(booking);
-      res.send({ success: true, message: 'Data Inserted!' })
+      res.send({ success: true, message: 'Booking Set!' })
     })
     console.log('databse connected')
   }

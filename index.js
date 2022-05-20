@@ -67,8 +67,8 @@ function sendAppoinmentEmail(booking) {
     <a href="httts://raselweb.net">unsubscribe</a>
     </div>`
   }
-
 }
+
 async function run() {
   try {
     await client.connect();
@@ -125,7 +125,7 @@ async function run() {
     })
 
     // Inster or Update User to Database.
-    app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
+    app.put('/user/admin/:email', async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const updateUser = {
@@ -138,6 +138,7 @@ async function run() {
     // Inster or Update User to Database.
     app.put('/user/:email', async (req, res) => {
       const email = req.params.email;
+      console.log(email)
       const user = req.body;
       const filter = { email: email };
       const options = { upsert: true };

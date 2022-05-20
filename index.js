@@ -5,8 +5,8 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const { response } = require('express');
-
+const nodemailer = require("nodemailer");
+const mandrillTransport = require('nodemailer-mandrill-transport');
 
 // Middleware.
 app.use(cors());
@@ -40,10 +40,35 @@ function verifyJWT(req, res, next) {
     // Sob thik thake next() dia baki kaj gulo korbe.
     next()
   });
-
   // console.log(authHeader)
 }
 
+const smtpTransport = nodemailer.createTransport(mandrillTransport({
+  auth: {
+    apiKey: process.env.EMAIL_SEDER_KEY,
+  }
+}));
+
+function sendAppoinmentEmail(booking) {
+  const { teatmentName, date, slot, patiendEmail, patientName } = booking;
+  let email = {
+    from: process.env.FROM_EMAIL,
+    to: patiendEmail,
+    subject: `Your appoinment for ${teatmentName} is on ${date} at ${slot} is Confirmed.`,
+    text: `Your appoinment for ${teatmentName} is on ${date} at ${slot} is Confirmed.`,
+    html: `
+    <div>
+    <p>Hello, ${patientName}</p>
+    <h3>Your appoinment for ${teatmentName} is Confirmed.</h3>
+    <p>Looking forword to See you on ${date} at ${slot}</p>
+    <h3>Our Address</h3>
+    <p>King abdulaziz Road</p>
+    <p>Dammam, Saudi Arabia</p>
+    <a href="httts://raselweb.net">unsubscribe</a>
+    </div>`
+  }
+
+}
 async function run() {
   try {
     await client.connect();
@@ -177,6 +202,8 @@ async function run() {
         return res.send({ success: false, message: 'Booking Already Exist.' })
       }
       await bookignCollection.insertOne(booking);
+      console.log('sending Email')
+      sendAppoinmentEmail(booking);
       res.send({ success: true, message: 'Booking Set!' })
     })
     console.log('databse connected')

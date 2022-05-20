@@ -183,7 +183,6 @@ async function run() {
     // use agregate lookup, pipeline, match, group.
     app.get('/available', async (req, res) => {
       const date = req.query.date;
-
       // 1st step get all servicee from servicescollection.
       const services = await servicesCollection.find().toArray();
       // 2nd step is get all booking of the day.
@@ -193,13 +192,12 @@ async function run() {
       // 3rd Step is for each service do sometinh.
       services.forEach(service => {
         // 4th step is find the bookings for that service.
-        const servicesBookings = bookings.filter(bitem => bitem.teatmentName === service.name);
+        const serviceBookings = bookings.filter(book => book.teatmentName === service.name);
         // 5th step is select slot for the service bookings.
-        const booked = servicesBookings.map(sbitem => sbitem.slot);
+        const bookedSlots = serviceBookings.map(book => book.slot);
         // 6th select those slot their are not in bookes slot.
-        const available = service.slots.filter(s => !booked.includes(s));
+        const available = service.slot.filter(slot => !bookedSlots.includes(slot));
         service.slots = available
-
       })
       res.send(services);
     })

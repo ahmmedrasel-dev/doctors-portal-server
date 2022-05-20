@@ -196,7 +196,7 @@ async function run() {
         // 5th step is select slot for the service bookings.
         const bookedSlots = serviceBookings.map(book => book.slot);
         // 6th select those slot their are not in bookes slot.
-        const available = service.slot.filter(slot => !bookedSlots.includes(slot));
+        const available = service.slots.filter(slot => !bookedSlots.includes(slot));
         service.slots = available
       })
       res.send(services);

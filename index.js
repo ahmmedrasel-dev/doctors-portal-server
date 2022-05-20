@@ -5,8 +5,8 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const nodemailer = require("nodemailer");
-const mandrillTransport = require('nodemailer-mandrill-transport');
+var nodemailer = require('nodemailer');
+var mandrillTransport = require('nodemailer-mandrill-transport');
 
 // Middleware.
 app.use(cors());
@@ -43,11 +43,12 @@ function verifyJWT(req, res, next) {
   // console.log(authHeader)
 }
 
-const smtpTransport = nodemailer.createTransport(mandrillTransport({
+let transport = nodemailer.createTransport(mandrillTransport({
   auth: {
     apiKey: process.env.EMAIL_SEDER_KEY,
   }
 }));
+
 
 function sendAppoinmentEmail(booking) {
   const { teatmentName, date, slot, patiendEmail, patientName } = booking;
@@ -67,6 +68,14 @@ function sendAppoinmentEmail(booking) {
     <a href="httts://raselweb.net">unsubscribe</a>
     </div>`
   }
+
+  transport.sendMail(email, function (err, info) {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(info);
+    }
+  })
 }
 
 async function run() {
